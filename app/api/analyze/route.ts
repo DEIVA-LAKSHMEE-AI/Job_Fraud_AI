@@ -15,113 +15,115 @@ import { ExtractedInformation, InvestigationResult } from '@/lib/store';
 
 async function callAI(prompt: string): Promise<string> {
   const openaiKey = process.env.OPENAI_API_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY;
 
-  if (openaiKey) {
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openaiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a cybersecurity expert analyzing job offers for fraud indicators. Provide concise, professional analysis.',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          max_tokens: 500,
-          temperature: 0.7,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.choices?.[0]?.message?.content) {
-        return data.choices[0].message.content;
-      }
-    } catch (error) {
-      console.error('OpenAI API error:', error);
-    }
+  if (!openaiKey) {
+    console.error('OPENAI_API_KEY not configured');
+    return 'API key not configured';
   }
 
-  if (geminiKey) {
-    try {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': geminiKey,
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-        }),
-      });
+  try {
+    console.log('Calling OpenAI API...');
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a cybersecurity expert analyzing job offers for fraud indicators. Provide DETAILED, specific analysis. DO NOT ask users to verify things - YOU do the analysis and provide facts. Be thorough and technical.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        max_tokens: 2000,
+        temperature: 0.7,
+      }),
+    });
 
-      const data = await response.json();
-      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        return data.candidates[0].content.parts[0].text;
-      }
-    } catch (error) {
-      console.error('Gemini API error:', error);
+    const data = await response.json();
+    
+    if (data.error) {
+      console.error('OpenAI Error:', data.error);
+      return `API Error: ${data.error.message}`;
     }
-  }
 
-  return 'Unable to analyze. Please configure API keys.';
+    if (data.choices?.[0]?.message?.content) {
+      console.log('AI Response received');
+      return data.choices[0].message.content;
+    }
+
+    console.error('Unexpected OpenAI response:', data);
+    return 'No response from AI';
+  } catch (error) {
+    console.error('OpenAI API error:', error);
+    return `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+  }
 }
 
 async function analyzeWithAI(text: string): Promise<Partial<InvestigationResult>> {
-  const analysisPrompt = `Analyze this job offer for fraud indicators and provide a trust score (0-100) and risk assessment. Keep response under 300 words.
+  const analysisPrompt = `You are analyzing a job offer for fraud. Provide DETAILED analysis for EACH section. DO NOT ask users to verify - YOU analyze and provide findings.
 
-Job Offer Content:
+Job Offer:
 ${text}
 
-Provide analysis in this format:
-TRUST_SCORE: [0-100]
+IMPORTANT: Analyze each section thoroughly. Look for:
+- Email domain mismatches (does it match official company domain?)
+- Company legitimacy issues
+- Recruiter verification problems
+- Website red flags
+- Phone number validity
+
+Provide response in EXACTLY this format (multi-line sections allowed):
+
+TRUST_SCORE: [0-100 number]
 RISK_LEVEL: [low/medium/high]
-EMAIL_ANALYSIS: [brief analysis]
-COMPANY_ANALYSIS: [brief analysis]
-RECRUITER_ANALYSIS: [brief analysis]
-WEBSITE_ANALYSIS: [brief analysis]
-PHONE_ANALYSIS: [brief analysis]
-SUMMARY: [brief summary]`;
+EMAIL_ANALYSIS: [Detailed analysis of email domain - does it match the company? Any red flags?]
+COMPANY_ANALYSIS: [Detailed analysis - is company name verified? Any issues found?]
+RECRUITER_ANALYSIS: [Detailed analysis - does recruiter info appear legitimate? Red flags?]
+WEBSITE_ANALYSIS: [Detailed analysis - is website legitimate? Suspicious elements?]
+PHONE_ANALYSIS: [Detailed analysis - phone format valid? Any red flags?]
+SUMMARY: [2-3 sentence summary of findings]`;
 
   const aiResponse = await callAI(analysisPrompt);
 
-  // Parse AI response
-  const trustScoreMatch = aiResponse.match(/TRUST_SCORE:\s*(\d+)/);
-  const riskMatch = aiResponse.match(/RISK_LEVEL:\s*(low|medium|high)/i);
-  const emailMatch = aiResponse.match(/EMAIL_ANALYSIS:\s*([^\n]+)/);
-  const companyMatch = aiResponse.match(/COMPANY_ANALYSIS:\s*([^\n]+)/);
-  const recruiterMatch = aiResponse.match(/RECRUITER_ANALYSIS:\s*([^\n]+)/);
-  const websiteMatch = aiResponse.match(/WEBSITE_ANALYSIS:\s*([^\n]+)/);
-  const phoneMatch = aiResponse.match(/PHONE_ANALYSIS:\s*([^\n]+)/);
-  const summaryMatch = aiResponse.match(/SUMMARY:\s*([\s\S]+?)(?=\n\w+:|$)/);
+  console.log('Parsing AI response...');
 
-  return {
-    trustScore: trustScoreMatch ? parseInt(trustScoreMatch[1]) : 65,
-    riskLevel: (riskMatch?.[1]?.toLowerCase() as 'low' | 'medium' | 'high') || 'medium',
-    emailDomainAnalysis: emailMatch?.[1] || 'Email domain analysis pending',
-    companyAnalysis: companyMatch?.[1] || 'Company analysis pending',
-    recruiterAnalysis: recruiterMatch?.[1] || 'Recruiter analysis pending',
-    websiteAnalysis: websiteMatch?.[1] || 'Website analysis pending',
-    phoneAnalysis: phoneMatch?.[1] || 'Phone analysis pending',
-    summary: summaryMatch?.[1] || aiResponse.substring(0, 300),
+  // Better parsing for multi-line responses
+  const trustScoreMatch = aiResponse.match(/TRUST_SCORE:\s*(\d+)/i);
+  const riskMatch = aiResponse.match(/RISK_LEVEL:\s*(low|medium|high)/i);
+  
+  // Parse multi-line sections
+  const emailMatch = aiResponse.match(/EMAIL_ANALYSIS:\s*(.+?)(?=COMPANY_ANALYSIS:|RECRUITER_ANALYSIS:|WEBSITE_ANALYSIS:|PHONE_ANALYSIS:|SUMMARY:|$)/is);
+  const companyMatch = aiResponse.match(/COMPANY_ANALYSIS:\s*(.+?)(?=RECRUITER_ANALYSIS:|EMAIL_ANALYSIS:|WEBSITE_ANALYSIS:|PHONE_ANALYSIS:|SUMMARY:|$)/is);
+  const recruiterMatch = aiResponse.match(/RECRUITER_ANALYSIS:\s*(.+?)(?=WEBSITE_ANALYSIS:|EMAIL_ANALYSIS:|COMPANY_ANALYSIS:|PHONE_ANALYSIS:|SUMMARY:|$)/is);
+  const websiteMatch = aiResponse.match(/WEBSITE_ANALYSIS:\s*(.+?)(?=PHONE_ANALYSIS:|EMAIL_ANALYSIS:|COMPANY_ANALYSIS:|RECRUITER_ANALYSIS:|SUMMARY:|$)/is);
+  const phoneMatch = aiResponse.match(/PHONE_ANALYSIS:\s*(.+?)(?=SUMMARY:|EMAIL_ANALYSIS:|COMPANY_ANALYSIS:|RECRUITER_ANALYSIS:|WEBSITE_ANALYSIS:|$)/is);
+  const summaryMatch = aiResponse.match(/SUMMARY:\s*(.+?)$/is);
+
+  const parseSection = (match: RegExpMatchArray | null): string => {
+    if (!match) return '';
+    return match[1]?.trim().replace(/\n+/g, ' ') || '';
   };
+
+  const result = {
+    trustScore: trustScoreMatch ? Math.min(100, Math.max(0, parseInt(trustScoreMatch[1]))) : 50,
+    riskLevel: (riskMatch?.[1]?.toLowerCase() as 'low' | 'medium' | 'high') || 'medium',
+    emailDomainAnalysis: parseSection(emailMatch) || 'Email domain analysis: Unable to determine',
+    companyAnalysis: parseSection(companyMatch) || 'Company analysis: Unable to determine',
+    recruiterAnalysis: parseSection(recruiterMatch) || 'Recruiter analysis: Unable to determine',
+    websiteAnalysis: parseSection(websiteMatch) || 'Website analysis: Unable to determine',
+    phoneAnalysis: parseSection(phoneMatch) || 'Phone analysis: Unable to determine',
+    summary: parseSection(summaryMatch) || aiResponse.substring(0, 300),
+  };
+
+  console.log('Parsed result:', result);
+  return result;
 }
 
 export async function POST(request: NextRequest) {
@@ -157,19 +159,26 @@ export async function POST(request: NextRequest) {
     // AI Analysis
     const aiAnalysis = await analyzeWithAI(text);
 
-    // Generate recommendations
+    // Generate recommendations based on AI analysis
     const recommendations: string[] = [];
     if (aiAnalysis.riskLevel === 'low') {
-      recommendations.push('Proceed Safely');
-      recommendations.push('Contact official company HR to confirm');
+      recommendations.push('✓ Appears legitimate - Proceed to next stage');
+      recommendations.push('✓ Email domain verified as legitimate');
+      recommendations.push('✓ Company information verified');
+      recommendations.push('✓ Recruiter details appear authentic');
     } else if (aiAnalysis.riskLevel === 'medium') {
-      recommendations.push('Proceed with Caution');
-      recommendations.push('Verify recruiter identity independently');
-      recommendations.push('Check company website for official contact info');
+      recommendations.push('⚠ Multiple red flags detected');
+      recommendations.push('⚠ Email domain may not match official company domain');
+      recommendations.push('⚠ Company details require verification');
+      recommendations.push('⚠ Recruiter information appears questionable');
+      recommendations.push('Action: Contact company official HR directly to confirm');
     } else {
-      recommendations.push('Avoid Sharing Personal Information');
-      recommendations.push('Contact Company Official HR');
-      recommendations.push('Never pay registration/verification fees');
+      recommendations.push('🚫 HIGH RISK - Likely fraudulent');
+      recommendations.push('🚫 DO NOT provide personal information');
+      recommendations.push('🚫 DO NOT click links or download files');
+      recommendations.push('🚫 DO NOT send money for any reason');
+      recommendations.push('🚫 DO NOT respond to this offer');
+      recommendations.push('Action: Report to company and relevant authorities');
     }
 
     const result: InvestigationResult = {
