@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-800/50;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-background text-white;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display font-semibold;
+  }
+
+  p {
+    @apply text-gray-300;
+  }
+
+  button {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  input,
+  textarea {
+    @apply bg-card/50 border border-gray-700/50 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all duration-200;
+  }
+
+  ::selection {
+    @apply bg-primary/30 text-white;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-700 rounded-full hover:bg-gray-600;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+
+  .glass-dark {
+    @apply bg-black/20 backdrop-blur-md border border-white/5;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 rounded-lg font-semibold bg-gradient-to-r from-primary to-accent hover:shadow-lg hover:shadow-primary/30 transition-all duration-200 flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 rounded-lg font-semibold border border-primary/30 hover:border-primary/60 text-primary hover:bg-primary/10 transition-all duration-200 flex items-center justify-center gap-2;
+  }
+
+  .input-glow {
+    @apply border-primary/50 ring-1 ring-primary/30 focus:border-primary/80 focus:ring-primary/50;
+  }
+
+  .card-hover {
+    @apply hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300;
+  }
+
+  .underline-gradient {
+    @apply relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-gradient-to-r after:from-primary to-accent after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300 after:origin-left;
+  }
+}
+
+/* Custom animations */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4), inset 0 0 20px rgba(99, 102, 241, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.6), inset 0 0 20px rgba(99, 102, 241, 0.2);
+  }
+}
+
+.glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Smooth scrolling for investigation steps */
+.investigation-step {
+  @apply animate-slide-up;
+}
+
+/* Loading skeleton */
+.skeleton {
+  @apply bg-gradient-to-r from-card via-gray-700 to-card bg-[length:200%_100%] animate-shimmer;
+}
