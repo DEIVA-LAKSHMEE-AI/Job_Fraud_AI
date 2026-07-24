@@ -29,6 +29,6 @@
     "clsx": "^2.0.0"
   },
   "devDependencies": {
-    "@types/jspdf": "^2.5.0"
+    
   }
 }
