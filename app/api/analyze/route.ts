@@ -94,11 +94,9 @@ SUMMARY: [2-3 sentence summary of findings]`;
 
   console.log('Parsing AI response...');
 
-  // Better parsing for multi-line responses
   const trustScoreMatch = aiResponse.match(/TRUST_SCORE:\s*(\d+)/i);
   const riskMatch = aiResponse.match(/RISK_LEVEL:\s*(low|medium|high)/i);
   
-  // Parse multi-line sections
   const emailMatch = aiResponse.match(/EMAIL_ANALYSIS:\s*(.+?)(?=COMPANY_ANALYSIS:|RECRUITER_ANALYSIS:|WEBSITE_ANALYSIS:|PHONE_ANALYSIS:|SUMMARY:|$)/is);
   const companyMatch = aiResponse.match(/COMPANY_ANALYSIS:\s*(.+?)(?=RECRUITER_ANALYSIS:|EMAIL_ANALYSIS:|WEBSITE_ANALYSIS:|PHONE_ANALYSIS:|SUMMARY:|$)/is);
   const recruiterMatch = aiResponse.match(/RECRUITER_ANALYSIS:\s*(.+?)(?=WEBSITE_ANALYSIS:|EMAIL_ANALYSIS:|COMPANY_ANALYSIS:|PHONE_ANALYSIS:|SUMMARY:|$)/is);
@@ -137,7 +135,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract information from text
     const extracted: ExtractedInformation = {
       company: extractCompanyInfo(text),
       recruiter: extractRecruiterName(text),
@@ -153,13 +150,9 @@ export async function POST(request: NextRequest) {
       rawText: text,
     };
 
-    // Detect suspicious indicators
     const suspiciousIndicators = detectSuspiciousIndicators(text);
-
-    // AI Analysis
     const aiAnalysis = await analyzeWithAI(text);
 
-    // Generate recommendations based on AI analysis
     const recommendations: string[] = [];
     if (aiAnalysis.riskLevel === 'low') {
       recommendations.push('✓ Appears legitimate - Proceed to next stage');
